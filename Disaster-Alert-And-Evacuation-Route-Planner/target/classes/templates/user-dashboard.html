@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global Disaster Alert & Evacuation Planner</title>
+    <link rel="website icon" type="png" th:href="@{/logo.jpeg}">
+
+    <!-- Typography: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Leaflet & Visualizations -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+
+    <style>
+        /* * -----------------------------------------------------------
+         * UNIFIED DESIGN SYSTEM (Matches Admin Console)
+         * Theme: Professional, Clean, Data-First
+         * -----------------------------------------------------------
+         */
+
+        :root {
+            /* Palette */
+            --bg-body: #FFFFFF;
+            --bg-panel: #F8F9FA;
+            --text-main: #1A1A1A;
+            --text-sub: #6B7280;
+            --border-color: #E5E7EB;
+
+            /* Accent */
+            --accent-color: #0044CC;   /* International Safety Blue */
+            --accent-hover: #003399;
+            --accent-light: #EFF6FF;
+
+            /* Functional */
+            --danger: #DC2626;
+            --danger-bg: #FEF2F2;
+            --warning: #D97706;
+            --warning-bg: #FFFBEB;
+            --success: #059669;
+            --success-bg: #ECFDF5;
+
+            /* Layout */
+            --container-width: 1280px;
+            --header-height: 70px;
+            --radius: 8px;
+        }
+
+        /* RESET & BASE */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        a { text-decoration: none; color: inherit; transition: 0.2s ease; }
+        ul { list-style: none; }
+        img { display: block; max-width: 100%; }
+
+        /* TYPOGRAPHY */
+        h1, h2, h3, h4, h5 { font-weight: 700; letter-spacing: -0.01em; line-height: 1.2; }
+        h1 { font-size: 1.5rem; }
+        h2 { font-size: 2rem; margin-bottom: 1rem; }
+        p { color: var(--text-main); font-weight: 400; margin-bottom: 1.5rem; max-width: 70ch; }
+
+        /* UTILITIES */
+        .container {
+            max-width: var(--container-width);
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        /* BUTTONS (Unified Style) */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.75rem 1.5rem;
+            font-weight: 600;
+            border-radius: var(--radius);
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid var(--border-color);
+            background: #FFFFFF;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background-color: var(--text-main);
+            color: #fff;
+            border-color: var(--text-main);
+        }
+        .btn-primary:hover {
+            background-color: var(--accent-color);
+            border-color: var(--accent-color);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--text-main);
+            border-color: var(--text-main);
+        }
+        .btn-outline:hover {
+            border-color: var(--accent-color);
+            color: var(--accent-color);
+            background: var(--accent-light);
+        }
+
+        /* -----------------------------------------------------------
+         * HEADER
+         * ----------------------------------------------------------- */
+        header {
+            height: var(--header-height);
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+        }
+
+        .nav-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+        }
+
+        .logo {
+            font-size: 1.25rem;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .logo i { color: var(--accent-color); }
+
+        .nav-links { display: flex; gap: 2rem; }
+        .nav-links a { font-size: 0.9rem; font-weight: 500; position: relative; color: var(--text-sub); }
+        .nav-links a:hover, .nav-links a.active { color: var(--accent-color); }
+        .nav-links a::after {
+            content: ''; position: absolute; bottom: -4px; left: 0;
+            width: 0%; height: 2px; background: var(--accent-color); transition: width 0.3s;
+        }
+        .nav-links a:hover::after { width: 100%; }
+
+        /* -----------------------------------------------------------
+         * DASHBOARD GRID (Hero)
+         * ----------------------------------------------------------- */
+        .dashboard-section {
+            padding: 2rem 0;
+            height: calc(100vh - var(--header-height));
+            min-height: 700px;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 350px 1fr; /* Sidebar | Map */
+            gap: 0;
+            height: 100%;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            overflow: hidden;
+            background: #FFFFFF;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+
+        /* Internal Sidebar - Professional Style */
+        .sidebar {
+            background: #FFFFFF;
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            z-index: 2;
+        }
+
+        .sidebar-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            background: var(--bg-panel);
+        }
+        .sidebar-header h3 {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-sub);
+            font-weight: 600;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* Professional Stats Cards */
+        .stats-container {
+            padding: 1.5rem;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .stat-card {
+            background: var(--bg-body);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .stat-card.full-width { grid-column: 1 / -1; flex-direction: row; justify-content: space-between; align-items: center; }
+
+        .stat-label { font-size: 0.75rem; color: var(--text-sub); font-weight: 500; text-transform: uppercase; }
+        .stat-value { font-size: 1.5rem; font-weight: 700; line-height: 1; }
+
+        .val-danger { color: var(--danger); }
+        .val-success { color: var(--success); }
+        .val-neutral { color: var(--text-main); }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 99px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            background: var(--success-bg);
+            color: var(--success);
+        }
+
+        /* Weather Compact Professional */
+        .weather-section {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .input-group {
+            display: flex;
+            margin-bottom: 1rem;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            border-radius: var(--radius);
+        }
+        .input-group input {
+            flex: 1;
+            padding: 0.6rem 0.8rem;
+            border: 1px solid var(--border-color);
+            border-right: none;
+            border-radius: var(--radius) 0 0 var(--radius);
+            outline: none;
+            font-size: 0.9rem;
+            color: var(--text-main);
+            background: #fff;
+        }
+        .input-group input:focus { border-color: var(--accent-color); z-index: 1; }
+
+        .input-group button {
+            padding: 0 1rem;
+            background: #f3f4f6;
+            border: 1px solid var(--border-color);
+            border-radius: 0 var(--radius) var(--radius) 0;
+            cursor: pointer;
+            color: var(--text-sub);
+            transition: all 0.2s;
+        }
+        .input-group button:hover {
+            background: var(--accent-color);
+            color: white;
+            border-color: var(--accent-color);
+        }
+
+        .weather-display {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--bg-panel);
+            padding: 0.75rem 1rem;
+            border-radius: var(--radius);
+            font-size: 0.9rem;
+        }
+        .weather-item { display: flex; align-items: center; gap: 0.5rem; color: var(--text-sub); }
+        .weather-item strong { color: var(--text-main); }
+
+
+        /* Alert Feed */
+        .alert-feed { flex: 1; padding: 0; display: flex; flex-direction: column; overflow: hidden; }
+        .feed-header {
+            padding: 1rem 1.5rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-sub);
+            text-transform: uppercase;
+            border-bottom: 1px solid var(--border-color);
+            background: #FFFFFF;
+            display: flex; justify-content: space-between;
+        }
+        .feed-list { flex: 1; overflow-y: auto; padding: 0; }
+
+        .alert-item {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            border-left: 4px solid transparent;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .alert-item:hover { background: var(--bg-panel); padding-left: 1.75rem; }
+        .alert-item.critical { border-left-color: var(--danger); background: linear-gradient(to right, var(--danger-bg), transparent); }
+        .alert-item.high { border-left-color: var(--warning); background: linear-gradient(to right, var(--warning-bg), transparent); }
+
+        .alert-loc { font-weight: 600; font-size: 0.95rem; display: block; margin-bottom: 0.25rem; color: var(--text-main); }
+        .alert-meta { font-size: 0.8rem; color: var(--text-sub); display: flex; gap: 1rem; align-items: center; }
+        .alert-badge {
+            font-size: 0.7rem; padding: 0.1rem 0.4rem; border-radius: 4px; font-weight: 600; text-transform: uppercase;
+        }
+        .badge-crit { background: var(--danger); color: white; }
+        .badge-high { background: var(--warning); color: white; }
+
+        /* Map Area */
+        .map-wrapper { position: relative; background: #E5E7EB; height: 100%; width: 100%; overflow: hidden; }
+        #dashboard-map { width: 100%; height: 100%; z-index: 1; }
+
+        /* Pro Map Overlays */
+        .map-overlay {
+            position: absolute;
+            bottom: 25px; right: 25px;
+            background: rgba(255, 255, 255, 0.98);
+            padding: 1.25rem;
+            border-radius: var(--radius);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            border: 1px solid var(--border-color);
+            z-index: 500;
+            min-width: 180px;
+        }
+        .legend-title { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--text-sub); margin-bottom: 0.75rem; letter-spacing: 0.05em; }
+        .legend-row { display: flex; align-items: center; gap: 0.75rem; font-size: 0.85rem; margin-bottom: 0.5rem; color: var(--text-main); font-weight: 500; }
+        .dot { width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+
+        /* Professional Alert Marker */
+        .alert-marker-pro { background: transparent; border: none; }
+        .alert-marker-pro svg {
+            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.25));
+            width: 100%; height: 100%;
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .alert-marker-pro:hover svg { transform: scale(1.15); }
+
+        /* -----------------------------------------------------------
+         * SECTIONS
+         * ----------------------------------------------------------- */
+        .content-section {
+            padding: 5rem 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .split-layout {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: center;
+        }
+        .split-layout img {
+            border: 1px solid var(--border-color); border-radius: var(--radius);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .feature-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; margin-top: 3rem;
+        }
+
+        .feature-card {
+            border: 1px solid var(--border-color);
+            padding: 2rem; border-radius: var(--radius);
+            transition: all 0.3s ease;
+            background: #FFFFFF;
+        }
+        .feature-card:hover { border-color: var(--accent-color); transform: translateY(-4px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+        .card-icon { font-size: 2rem; color: var(--text-main); margin-bottom: 1.5rem; }
+        .feature-card:hover .card-icon { color: var(--accent-color); }
+
+        .feature-list li {
+            padding: 0.75rem 0; border-bottom: 1px solid var(--border-color); font-size: 0.95rem; color: var(--text-sub); display: flex; justify-content: space-between;
+        }
+        .feature-list li:last-child { border-bottom: none; }
+
+        /* -----------------------------------------------------------
+         * FOOTER
+         * ----------------------------------------------------------- */
+        footer {
+            background: #F9FAFB; border-top: 1px solid var(--border-color);
+            padding: 4rem 0 0 0; margin-top: 4rem;
+        }
+
+        .footer-grid {
+            display: grid; grid-template-columns: 2fr 1fr 1fr 1.5fr; gap: 3rem; margin-bottom: 4rem;
+        }
+        .footer-col h4 { font-size: 0.85rem; text-transform: uppercase; color: var(--text-sub); margin-bottom: 1.5rem; letter-spacing: 0.05em; font-weight: 700; }
+        .footer-col ul li { margin-bottom: 0.75rem; }
+        .footer-col ul li a { color: var(--text-sub); font-weight: 500; font-size: 0.9rem; }
+        .footer-col ul li a:hover { color: var(--accent-color); text-decoration: none; }
+
+        .social-icons { display: flex; gap: 1rem; margin-top: 1rem; }
+        .social-icons a {
+            width: 36px; height: 36px; border: 1px solid var(--border-color);
+            display: flex; align-items: center; justify-content: center; border-radius: 50%;
+            font-size: 0.9rem; color: var(--text-sub); background: white;
+        }
+        .social-icons a:hover { border-color: var(--accent-color); color: white; background: var(--accent-color); }
+
+        .footer-bottom {
+            border-top: 1px solid var(--border-color); padding: 1.5rem 0;
+            display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text-sub);
+            background: #FFFFFF;
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 1024px) {
+            .dashboard-grid { grid-template-columns: 1fr; height: auto; }
+            .sidebar { height: auto; max-height: 500px; border-right: none; border-bottom: 1px solid var(--border-color); }
+            #dashboard-map { height: 450px; }
+            .stats-container { grid-template-columns: repeat(3, 1fr); }
+            .stat-card.full-width { grid-column: auto; flex-direction: column; align-items: flex-start; }
+        }
+        @media (max-width: 768px) {
+            .nav-links { display: none; }
+            .split-layout, .footer-grid { grid-template-columns: 1fr; gap: 2rem; }
+            h2 { font-size: 1.75rem; }
+            .stats-container { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Header -->
+<header>
+    <div class="container nav-container">
+        <a th:href="@{/}" class="logo">
+            <i class="fas fa-shield-halved"></i> RapidResQ
+        </a>
+        <nav>
+            <ul class="nav-links">
+                <li><a th:href="@{#home}" class="active">Live Dashboard</a></li>
+                <li><a th:href="@{/toolkit.html}">Precautions</a></li>
+                <li><a th:href="@{/news-alerts.html}">News</a></li>
+                <li><a th:href="@{/support.html}">Support</a></li>
+            </ul>
+        </nav>
+        <div style="display:flex; gap:1rem;">
+            <a th:href="@{/login.html}" class="btn btn-primary">
+                Login <i class="fas fa-arrow-right" style="font-size:0.8em"></i>
+            </a>
+        </div>
+    </div>
+</header>
+
+<main>
+    <!-- Dashboard Section (The Unified UI) -->
+    <section id="home" class="container dashboard-section">
+        <div class="dashboard-grid">
+
+            <!-- Sidebar Control Panel -->
+            <aside class="sidebar">
+                <div class="sidebar-header">
+                    <h3><i class="fas fa-chart-line"></i> System Overview</h3>
+                </div>
+
+                <div class="stats-container">
+                    <div class="stat-card">
+                        <span class="stat-label">Active Alerts</span>
+                        <span class="stat-value val-danger" id="active-alerts-count">--</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Evacuations</span>
+                        <span class="stat-value val-neutral" id="evacuations-count">--</span>
+                    </div>
+                    <div class="stat-card full-width">
+                        <span class="stat-label">System Status</span>
+                        <span class="status-badge"><i class="fas fa-check-circle"></i> Online</span>
+                    </div>
+                </div>
+
+                <div class="weather-section">
+                    <div class="input-group">
+                        <input type="text" id="city-input" placeholder="Check local weather...">
+                        <button id="change-city-btn" aria-label="Search"><i class="fas fa-search"></i></button>
+                    </div>
+                    <div class="weather-display">
+                        <div class="weather-item"><i class="fas fa-temperature-high" style="color:var(--warning)"></i> <strong id="weather-temp">--</strong></div>
+                        <div class="weather-item"><i class="fas fa-wind" style="color:var(--accent-color)"></i> <strong id="weather-wind">--</strong></div>
+                        <div class="weather-item" id="weather-desc">--</div>
+                    </div>
+                </div>
+
+                <div class="alert-feed">
+                    <div class="feed-header">
+                        <span>Live Feed</span>
+                        <span style="font-size:0.7rem; color:var(--success);"><i class="fas fa-circle fa-beat" style="font-size:0.5rem"></i> REALTIME</span>
+                    </div>
+                    <div class="feed-list" id="alerts-list">
+                        <!-- Populated by JS -->
+                        <div class="alert-item">
+                            <span class="alert-loc">Connecting to satellite...</span>
+                            <span class="alert-meta">Waiting for data stream</span>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Map View -->
+            <div class="map-wrapper">
+                <div id="dashboard-map"></div>
+                <div class="map-overlay">
+                    <div class="legend-title">Map Legend</div>
+                    <div class="legend-row"><span class="dot" style="background:var(--danger)"></span> Critical Zone</div>
+                    <div class="legend-row"><span class="dot" style="background:var(--warning)"></span> High Risk</div>
+                    <div class="legend-row"><span class="dot" style="background:var(--accent-color)"></span> Evac Route</div>
+                    <div class="legend-row">
+                        <div style="width:16px; height:16px; background:var(--success); border-radius:50%; display:flex; align-items:center; justify-content:center; margin-right:6px;">
+                            <i class="fas fa-plus" style="color:white; font-size:8px;"></i>
+                        </div> Safe Shelter
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Feature Section 1: Location -->
+    <section class="content-section">
+        <div class="container split-layout">
+            <div>
+                <h2>Precision Matters.</h2>
+                <p>Enabling location services allows our algorithms to calculate evacuation routes with 99.8% accuracy. Your data is processed ephemerally and never stored.</p>
+                <button class="btn btn-primary" onclick="requestLoc()">
+                    <i class="fas fa-location-arrow"></i> Enable Location Services
+                </button>
+            </div>
+            <!-- Thymeleaf Image Source Preserved -->
+            <img th:src="@{/location_image.jpg}" alt="Location Interface" style="background:#f5f5f5; min-height:300px;">
+        </div>
+    </section>
+
+    <!-- Feature Section 2: Core Tech -->
+    <section class="content-section">
+        <div class="container">
+            <h2>Capabilities</h2>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <i class="fas fa-route card-icon"></i>
+                    <h3>Dynamic Routing</h3>
+                    <p>Real-time pathfinding that adjusts for road closures, flood levels, and traffic density.</p>
+                    <ul class="feature-list">
+                        <li><span>Latency</span> <span id="route-latency">~45ms</span></li>
+                        <li><span>Modes</span> <span>Transit, Foot, Auto</span></li>
+                    </ul>
+                </div>
+                <div class="feature-card">
+                    <i class="fas fa-brain card-icon"></i>
+                    <h3>Predictive AI</h3>
+                    <p>Machine learning models forecast disaster spread up to 48 hours in advance.</p>
+                    <ul class="feature-list">
+                        <li><span>Confidence</span> <span id="ai-accuracy">94%</span></li>
+                        <li><span>Source</span> <span>Seismic & Weather API</span></li>
+                    </ul>
+                </div>
+                <div class="feature-card">
+                    <i class="fas fa-wifi card-icon"></i>
+                    <h3>Mesh Network</h3>
+                    <p>Peer-to-peer communication protocol ensures alerts deliver even when towers are down.</p>
+                    <ul class="feature-list">
+                        <li><span>Range</span> <span>2.4km (P2P)</span></li>
+                        <li><span>Status</span> <span style="color:var(--success)">Active</span></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Resources Section -->
+    <section class="content-section" style="border-bottom:none;">
+        <div class="container">
+            <h2>Emergency Resources</h2>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <i class="fas fa-phone-volume card-icon"></i>
+                    <h3>Hotlines</h3>
+                    <ul class="feature-list" style="border:none;">
+                        <li><span>Police</span> <strong>100</strong></li>
+                        <li><span>Ambulance</span> <strong>102</strong></li>
+                        <li><span>Disaster HQ</span> <strong>1078</strong></li>
+                    </ul>
+                </div>
+                <div class="feature-card">
+                    <i class="fas fa-suitcase-medical card-icon"></i>
+                    <h3>Go-Bag Checklist</h3>
+                    <ul class="feature-list" style="border:none;">
+                        <li><span>3L Water/Person</span> <i class="fas fa-check" style="color:var(--success)"></i></li>
+                        <li><span>Radio & Batteries</span> <i class="fas fa-check" style="color:var(--success)"></i></li>
+                        <li><span>First Aid Kit</span> <i class="fas fa-check" style="color:var(--success)"></i></li>
+                    </ul>
+                </div>
+                <div class="feature-card">
+                    <i class="fas fa-hand-holding-heart card-icon"></i>
+                    <h3>Volunteer</h3>
+                    <p>Join the 12,000+ active volunteers helping coordiate safe zones in your area.</p>
+                    <button class="btn btn-outline" style="width:100%; margin-top:1rem;">Join Network</button>
+                </div>
+            </div>
+        </div>
+    </section>
+</main>
+
+<!-- NEW FOOTER LAYOUT -->
+<footer>
+    <div class="container">
+        <div class="footer-grid">
+            <div class="footer-col">
+                <a th:href="@{/}" class="logo" style="margin-bottom:1rem; display:inline-block;">
+                    <i class="fas fa-shield-halved"></i> RapidResQ
+                </a>
+                <p style="font-size:0.9rem; max-width:300px; color:var(--text-sub);">
+                    An open-source initiative dedicated to reducing response times during global catastrophes through intelligent data modeling.
+                </p>
+                <div class="social-icons">
+                    <a href="#"><i class="fab fa-twitter"></i></a>
+                    <a href="#"><i class="fab fa-github"></i></a>
+                    <a href="#"><i class="fab fa-linkedin-in"></i></a>
+                </div>
+            </div>
+
+            <div class="footer-col">
+                <h4>Platform</h4>
+                <ul>
+                    <li><a th:href="@{/user-dashboard}">Live Map</a></li>
+                    <li><a th:href="@{/toolkit.html}">Precaution Kit</a></li>
+                    <li><a th:href="@{/news-alerts.html}">Global News</a></li>
+                    <li><a th:href="@{/login.html}">Login</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-col">
+                <h4>Resources</h4>
+                <ul>
+                    <li><a th:href="@{/support.html}">Documentation</a></li>
+                    <li><a th:href="@{#}">API Status</a></li>
+                    <li><a th:href="@{#}">Privacy Policy</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-col">
+                <h4>Emergency Contact</h4>
+                <ul>
+                    <li>123 Response Blvd, Suite 101</li>
+                    <li><strong>+1 (800) 555-0199</strong></li>
+                    <li><a href="mailto:help@rapidresq.com" style="color:var(--accent-color)">help@rapidresq.com</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="footer-bottom">
+            <span>&copy; 2025 RapidResQ Systems. All rights reserved.</span>
+            <a href="#">Back to Top <i class="fas fa-arrow-up"></i></a>
+        </div>
+    </div>
+</footer>
+
+<!-- LOGIC -->
+<script th:inline="javascript">
+    document.addEventListener("DOMContentLoaded", function () {
+
+        // --- CONFIGURATION ---
+        let rawPort = '[[${@environment.getProperty("local.server.port")}]]';
+        let CURRENT_PORT = '8080';
+        if(!rawPort.includes('[[') && !rawPort.includes('${')) {
+            CURRENT_PORT = rawPort.replace(/"/g, '').replace(/'/g, '');
+        }
+
+        const BACKEND_HOST = `http://localhost:${CURRENT_PORT}`;
+        const USER_API_BASE_URL = `${BACKEND_HOST}/api/user`;
+        const ADMIN_API_BASE_URL = `${BACKEND_HOST}/api`;
+
+        // --- STATE ---
+        let dashboardMap = null;
+        let heatLayer = null;
+        let routingPolyline = null;
+        let markersLayer = L.layerGroup();
+
+        // --- PROFESSIONAL ICONS ---
+        // 1. Alert Icon (Shield with Exclamation)
+        const AlertIconPro = L.divIcon({
+            className: 'alert-marker-pro',
+            html: `<svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M20 4L4 32H36L20 4Z" fill="#D93025" stroke="#FFFFFF" stroke-width="2" stroke-linejoin="round"/>
+                    <path d="M20 12V22" stroke="white" stroke-width="3" stroke-linecap="round"/>
+                    <circle cx="20" cy="27" r="2" fill="white"/>
+                   </svg>`,
+            iconSize: [40, 40],
+            iconAnchor: [20, 38],
+            popupAnchor: [0, -38]
+        });
+
+        // 2. Shelter Icon (UPDATED: Home/Safe Place Logo)
+        const ShelterIcon = L.divIcon({
+            className: 'shelter-marker-pro',
+            html: `<div style="background:#1E8E3E; width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; border:2px solid white; box-shadow:0 4px 6px rgba(0,0,0,0.2);">
+                     <i class="fas fa-house-medical" style="color:white; font-size:14px;"></i>
+                   </div>`,
+            iconSize: [32, 32],
+            iconAnchor: [16, 16],
+            popupAnchor: [0, -10]
+        });
+
+        // 3. User Location (Pulsing Dot)
+        const UserIcon = L.divIcon({
+            className: 'user-marker',
+            html: '<div style="width:16px;height:16px;background:#0044CC;border-radius:50%;border:3px solid white;box-shadow:0 0 8px rgba(0,68,204,0.4);"></div>',
+            iconSize: [16, 16]
+        });
+
+        // --- API HELPERS ---
+        const apiService = {
+            getDisasterEvents: () => fetchJson(`/alerts`),
+            getSafetyStatus: (lat, lon) => fetchJson(`/status?lat=${lat}&lon=${lon}`),
+            getShelterData: () => fetch(`${ADMIN_API_BASE_URL}/shelters`).then(r => r.json()),
+            getRouteData: (lat, lon) => fetch(`${USER_API_BASE_URL}/route?lat=${lat}&lon=${lon}`).then(r => r.json())
+        };
+
+        async function fetchJson(endpoint) {
+            try {
+                const response = await fetch(`${USER_API_BASE_URL}${endpoint}`);
+                return response.ok ? response.json() : [];
+            } catch (error) { return []; }
+        }
+
+        // --- UI UPDATES ---
+        function updateDashboardStats(alertCount) {
+            const alertEl = document.getElementById('active-alerts-count');
+            const evacEl = document.getElementById('evacuations-count');
+
+            if (alertEl) {
+                alertEl.innerText = alertCount;
+                // Visual feedback if count is high
+                if(alertCount > 0) alertEl.parentElement.style.backgroundColor = 'var(--danger-bg)';
+            }
+            if (evacEl) evacEl.innerText = Math.floor(alertCount * 2.5);
+        }
+
+        // --- ROUTE RENDERING ---
+        async function displayEvacuationRoute(userLat, userLon) {
+            try {
+                const data = await apiService.getRouteData(userLat, userLon);
+
+                if (!data || !data.routeGeoJson || data.routeGeoJson === "{}") {
+                    console.warn("No route data available.");
+                    return;
+                }
+
+                if (routingPolyline) {
+                    dashboardMap.removeLayer(routingPolyline);
+                    routingPolyline = null;
+                }
+
+                const geo = JSON.parse(data.routeGeoJson);
+                if (geo.routes && geo.routes.length > 0) {
+                    const coords = geo.routes[0].geometry.coordinates;
+                    const latlngs = coords.map(c => [c[1], c[0]]);
+
+                    routingPolyline = L.polyline(latlngs, {
+                        color: "#E74C3C",
+                        weight: 5,
+                        opacity: 0.9,
+                        dashArray: '10, 10',
+                        lineJoin: 'round'
+                    }).addTo(dashboardMap);
+
+                    dashboardMap.fitBounds(routingPolyline.getBounds(), { padding: [50, 50] });
+
+                    L.popup()
+                        .setLatLng(latlngs[Math.floor(latlngs.length / 2)])
+                        .setContent("Evacuation Route Calculated")
+                        .openOn(dashboardMap);
+                }
+            } catch (e) {
+                console.error("Route calculation failed:", e);
+            }
+        }
+
+        // --- SAFETY CHECK ---
+        async function checkSafetyStatus(lat, lon) {
+            const nearby = await apiService.getSafetyStatus(lat, lon);
+            if (nearby && nearby.length > 0) {
+                displayEvacuationRoute(lat, lon);
+            } else {
+                if (routingPolyline) {
+                    dashboardMap.removeLayer(routingPolyline);
+                    routingPolyline = null;
+                }
+            }
+        }
+
+        // --- MAP LOGIC ---
+        function initializeUserLocation(lat, lon) {
+            if (dashboardMap) { dashboardMap.remove(); }
+
+            dashboardMap = L.map('dashboard-map', { zoomControl: false }).setView([lat, lon], 13);
+            L.control.zoom({ position: 'topright' }).addTo(dashboardMap);
+
+            L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+                attribution: '&copy; OpenStreetMap'
+            }).addTo(dashboardMap);
+
+            // Add Layers
+            markersLayer.addTo(dashboardMap);
+
+            // User Marker
+            L.marker([lat, lon], {icon: UserIcon}).addTo(dashboardMap).bindPopup("Your Location").openPopup();
+
+            loadShelterMarkers();
+            loadAlertsAndHeatmap();
+
+            checkSafetyStatus(lat, lon);
+        }
+
+        async function loadAlertsAndHeatmap() {
+            const alerts = await apiService.getDisasterEvents();
+            const listEl = document.getElementById('alerts-list');
+
+            // 1. Sidebar Feed
+            if(listEl && alerts.length > 0) {
+                listEl.innerHTML = '';
+                alerts.forEach(a => {
+                    let isCrit = a.severity === "CRITICAL" || a.severity >= 8;
+                    let severityClass = isCrit ? "critical" : "high";
+                    let badgeClass = isCrit ? "badge-crit" : "badge-high";
+
+                    let html = `
+                        <div class="alert-item ${severityClass}">
+                            <span class="alert-loc">${a.location}</span>
+                            <div class="alert-meta">
+                                <span class="alert-badge ${badgeClass}">${a.type}</span>
+                                <span>Lvl ${a.severity}</span>
+                            </div>
+                        </div>
+                    `;
+                    listEl.innerHTML += html;
+                });
+            } else if(listEl) {
+                listEl.innerHTML = '<div style="padding:1.5rem;color:#9CA3AF;font-size:0.9rem;text-align:center;"><i class="fas fa-check-circle" style="display:block;font-size:1.5rem;margin-bottom:0.5rem"></i>No active alerts nearby.<br>System clear.</div>';
+            }
+
+            // 2. Markers & Heatmap Data
+            markersLayer.clearLayers();
+            if (heatLayer) dashboardMap.removeLayer(heatLayer);
+
+            const heatPoints = [];
+
+            alerts.forEach(a => {
+                // Marker
+                const m = L.marker([a.latitude, a.longitude], { icon: AlertIconPro }).addTo(markersLayer);
+                m.bindPopup(`<b>${a.type}</b><br>${a.location}<br>Status: ${a.status}`);
+
+                // Heatmap (Ensure Floats)
+                // FIX: parseFloat prevents silent failure if JSON has strings
+                const lat = parseFloat(a.latitude);
+                const lon = parseFloat(a.longitude);
+                const intensity = a.severity ? (a.severity / 10) * 2.5 : 1.0;
+
+                if(!isNaN(lat) && !isNaN(lon)){
+                    heatPoints.push([lat, lon, intensity]);
+                }
+            });
+
+            // 3. Render High-Quality Heatmap
+            if (heatPoints.length > 0) {
+                heatLayer = L.heatLayer(heatPoints, {
+                    radius: 50,
+                    blur: 35,
+                    maxZoom: 17,
+                    gradient: { 0.4: '#FDE68A', 0.65: '#F59E0B', 1.0: '#EF4444' } // Updated to match palette
+                }).addTo(dashboardMap);
+            }
+
+            updateDashboardStats(alerts.length);
+        }
+
+        async function loadShelterMarkers() {
+            try {
+                const data = await apiService.getShelterData();
+                if(data && Array.isArray(data)) {
+                    data.forEach(s => {
+                        L.marker([s.latitude, s.longitude], {icon: ShelterIcon}).addTo(markersLayer)
+                         .bindPopup(`<b><i class="fas fa-house-medical"></i> ${s.name}</b><br>Capacity: ${s.capacity}`);
+                    });
+                }
+            } catch(e) { console.log("Shelter fetch failed"); }
+        }
+
+        // --- EVENTS ---
+        window.requestLoc = function() {
+            if ("geolocation" in navigator) {
+                navigator.geolocation.getCurrentPosition(
+                    pos => initializeUserLocation(pos.coords.latitude, pos.coords.longitude),
+                    err => { alert("Location access denied."); initializeUserLocation(19.0760, 72.8777); }
+                );
+            }
+        };
+
+        const weatherBtn = document.getElementById("change-city-btn");
+        if(weatherBtn) {
+            weatherBtn.addEventListener("click", () => {
+                document.getElementById("weather-temp").innerText = "24°C";
+                document.getElementById("weather-wind").innerText = "15km/h";
+                document.getElementById("weather-desc").innerText = "Clear";
+            });
+        }
+
+        // Init Default with Geolocation Check
+        if ("geolocation" in navigator) {
+            navigator.geolocation.getCurrentPosition(
+                (pos) => initializeUserLocation(pos.coords.latitude, pos.coords.longitude),
+                (err) => initializeUserLocation(19.0760, 72.8777)
+            );
+        } else {
+            initializeUserLocation(19.0760, 72.8777);
+        }
+    });
+</script>
+</body>
+</html>

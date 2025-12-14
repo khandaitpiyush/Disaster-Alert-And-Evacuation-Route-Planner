@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Console | RapidResQ</title>
+
+    <!-- Typography: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Leaflet Maps & Heatmap Plugin -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+
+    <style>
+        /* * -----------------------------------------------------------
+         * ADMIN DESIGN SYSTEM (Matches User Dashboard)
+         * Theme: Professional, Clean, Data-First
+         * -----------------------------------------------------------
+         */
+
+        :root {
+            /* Palette */
+            --bg-body: #FFFFFF;
+            --bg-panel: #F9FAFB; /* Very light gray for main content background contrast */
+            --text-main: #000000;
+            --text-sub: #555555;
+            --border-color: #E5E5E5;
+
+            /* Accent */
+            --accent-color: #0044CC;   /* International Safety Blue */
+            --accent-hover: #003399;
+            --accent-light: #F0F5FF;   /* For active states */
+
+            /* Functional */
+            --danger: #D93025;
+            --success: #1E8E3E;
+            --warning: #F9AB00;
+
+            /* Dimensions */
+            --sidebar-width: 260px;
+            --header-height: 64px;
+            --radius: 6px;
+        }
+
+        /* RESET */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-panel);
+            color: var(--text-main);
+            height: 100vh;
+            overflow: hidden; /* Sidebar scroll only */
+        }
+
+        /* LAYOUT GRID */
+        .admin-container {
+            display: grid;
+            grid-template-columns: var(--sidebar-width) 1fr;
+            height: 100%;
+        }
+
+        /* -----------------------------------------------------------
+         * SIDEBAR
+         * ----------------------------------------------------------- */
+        .sidebar {
+            background: #FFFFFF;
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            z-index: 100;
+        }
+
+        .sidebar-header {
+            height: var(--header-height);
+            display: flex;
+            align-items: center;
+            padding: 0 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .logo {
+            font-weight: 700;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-main);
+            text-decoration: none;
+        }
+        .logo i { color: var(--accent-color); }
+
+        .sidebar-nav {
+            padding: 1.5rem 0;
+            flex: 1;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem 1.5rem;
+            cursor: pointer;
+            color: var(--text-sub);
+            font-weight: 500;
+            font-size: 0.9rem;
+            border-left: 3px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .nav-item:hover {
+            color: var(--text-main);
+            background: var(--bg-panel);
+        }
+
+        .nav-item.active {
+            color: var(--accent-color);
+            background: var(--accent-light);
+            border-left-color: var(--accent-color);
+        }
+
+        .nav-item i { margin-right: 1rem; width: 20px; text-align: center; }
+
+        .sidebar-footer {
+            padding: 1.5rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        /* -----------------------------------------------------------
+         * MAIN CONTENT
+         * ----------------------------------------------------------- */
+        .main-content {
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .top-bar {
+            height: var(--header-height);
+            background: #FFFFFF;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 90;
+        }
+
+        .page-title h1 { font-size: 1.25rem; font-weight: 600; }
+        .page-title p { font-size: 0.85rem; color: var(--text-sub); margin: 0; }
+
+        .content-body {
+            padding: 2rem;
+            flex: 1;
+            max-width: 1400px; /* Prevent stretching on ultra-wide */
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        /* -----------------------------------------------------------
+         * COMPONENTS: CARDS
+         * ----------------------------------------------------------- */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: #FFFFFF;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            padding: 1.5rem;
+        }
+
+        .stat-label { font-size: 0.8rem; color: var(--text-sub); margin-bottom: 0.5rem; display: flex; align-items: center; gap:0.5rem;}
+        .stat-value { font-size: 1.75rem; font-weight: 700; color: var(--text-main); line-height: 1.2; }
+        .stat-desc { font-size: 0.8rem; color: var(--text-sub); margin-top: 0.5rem; }
+
+        /* Specific coloring for numbers only */
+        .val-critical { color: var(--danger); }
+        .val-success { color: var(--success); }
+
+        /* -----------------------------------------------------------
+         * COMPONENTS: TABLES
+         * ----------------------------------------------------------- */
+        .data-panel {
+            background: #FFFFFF;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+
+        .panel-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .panel-header h3 { font-size: 1rem; font-weight: 600; }
+
+        table { width: 100%; border-collapse: collapse; }
+
+        thead th {
+            text-align: left;
+            padding: 1rem 1.5rem;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-sub);
+            border-bottom: 1px solid var(--border-color);
+            background: #FAFAFA;
+        }
+
+        tbody td {
+            padding: 1rem 1.5rem;
+            font-size: 0.9rem;
+            border-bottom: 1px solid var(--border-color);
+            vertical-align: middle;
+        }
+        tbody tr:last-child td { border-bottom: none; }
+        tbody tr:hover { background-color: #FAFAFA; }
+
+        /* Badges */
+        .badge {
+            display: inline-flex;
+            padding: 0.25rem 0.6rem;
+            border-radius: 99px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .badge-critical { background: #FFF0F0; color: var(--danger); border: 1px solid #FFD0D0; }
+        .badge-high { background: #FFF8E1; color: var(--warning); border: 1px solid #FFE082; }
+        .badge-active { background: #E8F5E9; color: var(--success); border: 1px solid #A5D6A7; }
+
+        /* -----------------------------------------------------------
+         * COMPONENTS: BUTTONS & FORMS
+         * ----------------------------------------------------------- */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius);
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            border: 1px solid var(--border-color);
+            background: #FFFFFF;
+            color: var(--text-main);
+            transition: all 0.2s;
+        }
+        .btn:hover { border-color: var(--accent-color); color: var(--accent-color); }
+
+        .btn-primary {
+            background: var(--text-main);
+            color: #FFFFFF;
+            border-color: var(--text-main);
+        }
+        .btn-primary:hover {
+            background: var(--accent-color);
+            border-color: var(--accent-color);
+        }
+
+        .btn-danger {
+            color: var(--danger);
+            border-color: #FFD0D0;
+            background: #FFF0F0;
+        }
+        .btn-danger:hover { background: var(--danger); color: #FFF; }
+
+        .btn-icon { width: 32px; height: 32px; padding: 0; justify-content: center; border-radius: 50%; }
+
+        /* Form Layout */
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            padding: 1.5rem;
+        }
+        .form-group { display: flex; flex-direction: column; gap: 0.5rem; }
+        .form-group.full-width { grid-column: span 2; }
+
+        label { font-size: 0.85rem; font-weight: 500; }
+        input, select {
+            padding: 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            font-family: inherit;
+            outline: none;
+        }
+        input:focus, select:focus { border-color: var(--accent-color); }
+
+        /* -----------------------------------------------------------
+         * UTILITIES
+         * ----------------------------------------------------------- */
+        .content-section { display: none; }
+        .content-section.active { display: block; animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .hidden { display: none !important; }
+
+        /* Professional Alert Icon Styling */
+        .alert-marker-pro {
+            background: transparent;
+            border: none;
+        }
+        .alert-marker-pro svg {
+            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));
+            width: 100%;
+            height: 100%;
+            transition: transform 0.2s ease-out;
+        }
+        .alert-marker-pro:hover svg {
+            transform: scale(1.1);
+        }
+
+        /* Footer */
+        .admin-footer {
+            margin-top: 3rem;
+            border-top: 1px solid var(--border-color);
+            padding: 1.5rem 0;
+            text-align: center;
+            color: var(--text-sub);
+            font-size: 0.8rem;
+        }
+
+        /* -----------------------------------------------------------
+         * RESPONSIVE
+         * ----------------------------------------------------------- */
+        @media (max-width: 768px) {
+            .admin-container { grid-template-columns: 1fr; }
+            .sidebar { display: none; position: absolute; height: 100%; width: 100%; }
+            .sidebar.mobile-open { display: flex; }
+            .top-bar { padding: 0 1rem; }
+            .content-body { padding: 1rem; }
+            .form-grid { grid-template-columns: 1fr; }
+            .form-group.full-width { grid-column: auto; }
+        }
+    </style>
+
+    <!-- Map Logic Script (Matches your provided code structure) -->
+    <script>
+        let alertMap, alertMarker, dashboardMap, heatLayer;
+        let dashboardMarkers = L.layerGroup();
+        let shelterMap, shelterMarkers = L.layerGroup();
+        let shelterCreationMap, shelterCreationMarker;
+        let shelters = [];
+
+        // High-Fidelity SVG Icon for Shelters
+        const ShelterIcon = L.divIcon({
+            className: 'custom-div-icon',
+            html: '<div style="background-color:#1E8E3E;width:12px;height:12px;border-radius:50%;border:2px solid white;box-shadow:0 0 5px rgba(0,0,0,0.3);"></div>',
+            iconSize: [12, 12]
+        });
+
+        // Professional SVG Alert Icon (Shield with Exclamation)
+        const AlertIconPro = L.divIcon({
+            className: 'alert-marker-pro',
+            html: `<svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M20 4L4 32H36L20 4Z" fill="#D93025" stroke="#FFFFFF" stroke-width="2" stroke-linejoin="round"/>
+                    <path d="M20 12V22" stroke="white" stroke-width="3" stroke-linecap="round"/>
+                    <circle cx="20" cy="27" r="2" fill="white"/>
+                   </svg>`,
+            iconSize: [40, 40],
+            iconAnchor: [20, 38], // Point of the triangle
+            popupAnchor: [0, -38]
+        });
+
+        // --- GLOBAL MAP RENDERER ---
+        const renderAlertMarkersOnMap = (alertsData) => {
+            if(!dashboardMarkers || !dashboardMap) return;
+
+            // 1. Clear Layers
+            dashboardMarkers.clearLayers();
+            if (heatLayer) {
+                dashboardMap.removeLayer(heatLayer);
+            }
+
+            const active = alertsData.filter(a => a.status === 'Active' && a.latitude);
+            const heatPoints = [];
+
+            // 2. Add Professional Markers & Collect Heatmap Data
+            active.forEach(a => {
+                // Add Icon Marker
+                const m = L.marker([a.latitude, a.longitude], { icon: AlertIconPro }).addTo(dashboardMarkers);
+                m.bindPopup(`<b>${a.type}</b><br>${a.location}<br>Severity: ${a.severity}`);
+
+                // Add to Heatmap Data (Lat, Lon, Intensity)
+                // Intensity scaled by severity (1-10 -> 0.1-1.0) or default to high for visibility
+                const intensity = a.severity ? (a.severity / 10) * 2 : 1.0;
+                heatPoints.push([a.latitude, a.longitude, intensity]);
+            });
+
+            // 3. Render High-Quality Heatmap
+            // Gradient: Red (core) -> Orange -> Yellow (outer)
+            // Radius: ~25px gives a nice "zone" feel at standard zoom levels.
+            if (heatPoints.length > 0) {
+                heatLayer = L.heatLayer(heatPoints, {
+                    radius: 35, // Adjust for the 2km visual feel
+                    blur: 20,   // Smooth blending
+                    maxZoom: 12,
+                    gradient: {
+                        0.4: '#FFEDA0', // Pale Yellow
+                        0.65: '#FEB24C', // Orange
+                        1.0: '#F03B20'   // Deep Red
+                    }
+                }).addTo(dashboardMap);
+            }
+
+            // 4. Add Shelters to Dashboard Map (Context)
+            if(shelters.length > 0) {
+                shelters.forEach(s => {
+                    const m = L.marker([s.latitude, s.longitude], {icon: ShelterIcon}).addTo(dashboardMarkers);
+                    m.bindPopup(`<b>Shelter: ${s.name}</b><br>Cap: ${s.occupancy}/${s.capacity}`);
+                });
+            }
+        };
+
+        function updateCoordinates(latLng, latId, lonId) {
+            const latInput = document.getElementById(latId);
+            const lonInput = document.getElementById(lonId);
+            if (latInput && lonInput) {
+                latInput.value = latLng.lat.toFixed(6);
+                lonInput.value = latLng.lng.toFixed(6);
+            }
+        }
+
+        const initMapGeneric = (elementId, latId, lonId, isShelter = false) => {
+            const initialPos = [22.0, 79.0];
+            const map = L.map(elementId).setView(initialPos, 5);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap' }).addTo(map);
+
+            // Use Pro Icon for Alert Creation Map too, if not shelter
+            const icon = isShelter ? ShelterIcon : AlertIconPro;
+            const marker = L.marker(initialPos, { draggable: true, icon: icon }).addTo(map);
+
+            map.on('click', (e) => { marker.setLatLng(e.latlng); updateCoordinates(e.latlng, latId, lonId); });
+            marker.on('dragend', (e) => { updateCoordinates(e.target.getLatLng(), latId, lonId); });
+
+            return { map, marker };
+        };
+
+        const initAlertMap = () => {
+            const obj = initMapGeneric('alertMap', 'alertLat', 'alertLon');
+            alertMap = obj.map; alertMarker = obj.marker;
+        };
+
+        const initShelterCreationMap = () => {
+            const obj = initMapGeneric('shelterCreationMap', 'shelterLat', 'shelterLon', true);
+            shelterCreationMap = obj.map; shelterCreationMarker = obj.marker;
+        };
+
+        const initDashboardMap = (alertsData) => {
+            dashboardMap = L.map('dashboardMap', {zoomControl: false}).setView([22.0, 79.0], 5);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap' }).addTo(dashboardMap);
+            dashboardMarkers.addTo(dashboardMap);
+            renderAlertMarkersOnMap(alertsData);
+        };
+
+        const initShelterMap = () => {
+            shelterMap = L.map('shelterMap').setView([19.0760, 72.8777], 5);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap' }).addTo(shelterMap);
+            shelterMarkers.addTo(shelterMap);
+            setTimeout(() => { shelterMap.invalidateSize(); }, 500);
+        };
+
+        const fitShelterMapToBounds = () => {
+            shelterMarkers.clearLayers();
+            if (shelters && shelters.length > 0) {
+                shelters.forEach(s => {
+                    const marker = L.marker([s.latitude, s.longitude], { icon: ShelterIcon });
+                    marker.bindPopup(`<b>${s.name}</b><br>Cap: ${s.occupancy}/${s.capacity}`);
+                    shelterMarkers.addLayer(marker);
+                });
+                try { shelterMap.fitBounds(shelterMarkers.getBounds(), { padding: [50, 50] }); } catch(e){}
+            }
+        };
+    </script>
+</head>
+
+<body>
+<div class="admin-container">
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <a href="#" class="logo">
+                <i class="fas fa-shield-halved"></i> RapidResQ <span style="font-weight:400; color:var(--text-sub); margin-left:5px;">Admin</span>
+            </a>
+        </div>
+
+        <nav class="sidebar-nav">
+            <div class="nav-item active" data-content="dashboard">
+                <i class="fas fa-chart-pie"></i> Overview
+            </div>
+            <div class="nav-item" data-content="alerts">
+                <i class="fas fa-bell"></i> Alerts & Hazards
+            </div>
+            <div class="nav-item" data-content="evacuations">
+                <i class="fas fa-person-walking-arrow-right"></i> Evacuations
+            </div>
+            <div class="nav-item" data-content="shelters">
+                <i class="fas fa-campground"></i> Shelters
+            </div>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="nav-item" data-content="settings" style="padding-left:0; color:var(--text-main);">
+                <i class="fas fa-cog"></i> Settings
+            </div>
+            <button id="signOutButton" class="btn btn-danger" style="width:100%; margin-top:1rem; justify-content:center;">
+                <i class="fas fa-sign-out-alt" style="margin-right:0.5rem;"></i> Sign Out
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <header class="top-bar">
+            <div class="page-title">
+                <h1 id="page-header-title">Dashboard</h1>
+                <p>System Overview & Status</p>
+            </div>
+            <div>
+                <!-- User Profile / Notifications Placeholder -->
+                <button class="btn btn-icon"><i class="far fa-bell"></i></button>
+                <button class="btn btn-icon"><i class="far fa-user"></i></button>
+            </div>
+        </header>
+
+        <div class="content-body">
+
+            <!-- 1. DASHBOARD OVERVIEW -->
+            <div id="dashboard-content" class="content-section active">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label"><i class="fas fa-exclamation-circle"></i> Active Alerts</div>
+                        <div class="stat-value val-critical" id="activeAlertsCount">--</div>
+                        <div class="stat-desc">Requiring attention</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label"><i class="fas fa-person-walking"></i> Evacuations</div>
+                        <div class="stat-value" id="activeEvacuationsCount">--</div>
+                        <div class="stat-desc">Ongoing operations</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label"><i class="fas fa-check-shield"></i> Safe Shelters</div>
+                        <div class="stat-value val-success" id="safeSheltersCount">--</div>
+                        <div class="stat-desc" id="safeSheltersCapacity">Wait for data...</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label"><i class="fas fa-server"></i> System Status</div>
+                        <div class="stat-value val-success" style="font-size:1.25rem;">Operational</div>
+                        <div class="stat-desc">API Latency: 45ms</div>
+                    </div>
+                </div>
+
+                <div class="data-panel">
+                    <div class="panel-header">
+                        <h3>Global Situation Map</h3>
+                        <div style="display:flex; gap:0.5rem;">
+                            <button class="btn" style="font-size:0.75rem;">Create Alert</button>
+                        </div>
+                    </div>
+                    <div id="dashboardMap" style="height: 400px; width: 100%; background:#f0f0f0;"></div>
+                </div>
+            </div>
+
+            <!-- 2. ALERTS MANAGEMENT -->
+            <div id="alerts-content" class="content-section">
+                <!-- Creation Form (Hidden by default) -->
+                <div id="alerts-creation-panel" class="data-panel hidden">
+                    <div class="panel-header">
+                        <h3>Create New Alert</h3>
+                        <button id="cancelAlertCreation" class="btn btn-danger">Cancel</button>
+                    </div>
+                    <form id="newAlertForm" class="form-grid">
+                        <div class="form-group full-width">
+                            <label>Pin Location on Map</label>
+                            <div id="alertMap" style="height: 300px; width: 100%; border-radius:var(--radius); border:1px solid var(--border-color);"></div>
+                        </div>
+                        <div class="form-group">
+                            <label>Location Name</label>
+                            <input type="text" id="alertLocation" required placeholder="e.g. Downtown Sector 4">
+                        </div>
+                        <div class="form-group">
+                            <label>Disaster Type</label>
+                            <select id="alertType" required>
+                                <option value="" disabled selected>Select Type</option>
+                                <option value="Flood Warning">Flood</option>
+                                <option value="Earthquake Alert">Earthquake</option>
+                                <option value="Cyclone Warning">Cyclone</option>
+                                <option value="Fire">Fire</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Severity (1-10)</label>
+                            <input type="number" id="alertSeverity" min="1" max="10" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Status</label>
+                            <select id="alertStatus" required>
+                                <option value="Active">Active</option>
+                                <option value="Resolved">Resolved</option>
+                            </select>
+                        </div>
+                        <!-- Hidden Coords -->
+                        <div class="form-group">
+                            <label>Lat</label>
+                            <input type="text" id="alertLat" readonly style="background:#f9f9f9;">
+                        </div>
+                        <div class="form-group">
+                            <label>Lon</label>
+                            <input type="text" id="alertLon" readonly style="background:#f9f9f9;">
+                        </div>
+                        <div class="form-group full-width">
+                            <button type="submit" class="btn btn-primary" style="width:100%;">Publish Alert</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Alert Table -->
+                <div id="alerts-table-section" class="data-panel">
+                    <div class="panel-header">
+                        <h3>Active Alerts</h3>
+                        <button id="showAlertCreationForm" class="btn btn-primary"><i class="fas fa-plus"></i> New Alert</button>
+                    </div>
+                    <table>
+                        <thead>
+                        <tr>
+                            <th>Location</th>
+                            <th>Type</th>
+                            <th>Severity</th>
+                            <th>Status</th>
+                            <th>Timestamp</th>
+                            <th style="text-align:right;">Actions</th>
+                        </tr>
+                        </thead>
+                        <tbody id="alertsTableBody">
+                        <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 3. EVACUATIONS -->
+            <div id="evacuations-content" class="content-section">
+                <div class="data-panel">
+                    <div class="panel-header">
+                        <h3>Evacuation Operations</h3>
+                        <button class="btn btn-primary">Plan New Evacuation</button>
+                    </div>
+                    <table>
+                        <thead>
+                        <tr>
+                            <th>Zone / Area</th>
+                            <th>Status</th>
+                            <th>Population Est.</th>
+                            <th>Start Time</th>
+                            <th style="text-align:right;">Control</th>
+                        </tr>
+                        </thead>
+                        <tbody id="evacuationsTableBody">
+                        <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 4. SHELTERS -->
+            <div id="shelters-content" class="content-section">
+                <!-- Creation Form (Hidden) -->
+                <div id="shelter-creation-form-section" class="data-panel hidden">
+                    <div class="panel-header">
+                        <h3>Register New Shelter</h3>
+                        <button id="cancelShelterCreation" class="btn btn-danger">Cancel</button>
+                    </div>
+                    <form id="newShelterForm" class="form-grid">
+                        <div class="form-group full-width">
+                            <div id="shelterCreationMap" style="height: 300px; width: 100%; border-radius:var(--radius);"></div>
+                        </div>
+                        <div class="form-group"><label>Shelter Name</label><input type="text" id="shelterName" required></div>
+                        <div class="form-group"><label>Location Description</label><input type="text" id="shelterLocationName" required></div>
+                        <div class="form-group"><label>Max Capacity</label><input type="number" id="shelterCapacity" required></div>
+                        <div class="form-group"><label>Current Occupancy</label><input type="number" id="shelterOccupancy" required value="0"></div>
+                        <div class="form-group"><input type="text" id="shelterLat" readonly placeholder="Lat"></div>
+                        <div class="form-group"><input type="text" id="shelterLon" readonly placeholder="Lon"></div>
+                        <div class="form-group full-width"><button type="submit" class="btn btn-primary" style="width:100%;">Add Shelter</button></div>
+                    </form>
+                </div>
+
+                <div id="shelter-table-section">
+                    <div class="data-panel">
+                        <div class="panel-header"><h3>Shelter Map</h3></div>
+                        <div id="shelterMap" style="height: 350px; width: 100%; background:#eee;"></div>
+                    </div>
+
+                    <div class="data-panel">
+                        <div class="panel-header">
+                            <h3>Registered Shelters</h3>
+                            <button id="showShelterCreationForm" class="btn btn-primary"><i class="fas fa-plus"></i> Add Shelter</button>
+                        </div>
+                        <table>
+                            <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Coords</th>
+                                <th>Capacity</th>
+                                <th>Occupancy</th>
+                                <th>Status</th>
+                                <th style="text-align:right;">Actions</th>
+                            </tr>
+                            </thead>
+                            <tbody id="sheltersTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 5. SETTINGS -->
+            <div id="settings-content" class="content-section">
+                <div class="data-panel">
+                    <div class="panel-header"><h3>Settings</h3></div>
+                    <div style="padding:2rem;">
+                        <p>Application preferences and account settings would go here.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FOOTER -->
+            <footer class="admin-footer">
+                <p>&copy; 2025 RapidResQ Admin Console. Authorized Access Only.</p>
+                <div style="margin-top:0.5rem; display:flex; gap:1rem; justify-content:center;">
+                    <a href="#">Privacy</a>
+                    <a href="#">Support</a>
+                    <a href="#">System Logs</a>
+                </div>
+            </footer>
+
+        </div>
+    </main>
+</div>
+
+<!-- BACKEND LOGIC PRESERVED EXACTLY -->
+<script th:inline="javascript">
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- SAFE PORT HANDLING (FIXED) ---
+        let rawPort = '[[${@environment.getProperty("local.server.port")}]]';
+        let CURRENT_PORT_LOCAL = '8080'; // Default Fallback
+
+        // If rawPort still contains bracket syntax, it means Thymeleaf didn't run.
+        if (!rawPort.includes('[[') && !rawPort.includes('${')) {
+            CURRENT_PORT_LOCAL = rawPort.replace(/"/g, '').replace(/'/g, '');
+        }
+
+        const BACKEND_HOST = `http://localhost:${CURRENT_PORT_LOCAL}`;
+        const API_BASE_URL = `${BACKEND_HOST}/api`;
+        const SSE_URL = `${BACKEND_HOST}/api/stream/events`;
+
+        console.log("Using Backend API:", API_BASE_URL);
+
+        // --- NAVIGATION LOGIC ---
+        const navItems = document.querySelectorAll('.nav-item');
+        const contentSections = document.querySelectorAll('.content-section');
+        const pageHeaderTitle = document.getElementById('page-header-title');
+
+        const activateSection = (contentId, navItemContentData) => {
+            navItems.forEach(i => i.classList.remove('active'));
+            contentSections.forEach(s => s.classList.remove('active'));
+
+            const targetNavItem = document.querySelector(`.nav-item[data-content="${navItemContentData}"]`);
+            if(targetNavItem) targetNavItem.classList.add('active');
+
+            const targetContent = document.getElementById(contentId);
+            if(targetContent) targetContent.classList.add('active');
+
+            // Update Title
+            if(pageHeaderTitle) pageHeaderTitle.innerText = navItemContentData.charAt(0).toUpperCase() + navItemContentData.slice(1);
+
+            // Logic Triggers
+            if (navItemContentData === 'alerts') {
+                fetchAlerts(false);
+                if(!alertMap) setTimeout(initAlertMap, 100); else setTimeout(() => alertMap.invalidateSize(), 100);
+            } else if (navItemContentData === 'dashboard') {
+                Promise.all([fetchAlerts(false), fetchShelters(false)]).then(() => {
+                    if(!dashboardMap) setTimeout(() => initDashboardMap(alerts), 100);
+                    else renderAlertMarkersOnMap(alerts);
+                });
+            } else if (navItemContentData === 'shelters') {
+                if(!shelterMap) initShelterMap();
+                fetchShelters(true);
+                setTimeout(() => shelterMap.invalidateSize(), 100);
+            } else if (navItemContentData === 'evacuations') {
+                renderEvacuations();
+            }
+        };
+
+        navItems.forEach(item => {
+            item.addEventListener('click', () => {
+                const contentData = item.dataset.content;
+                activateSection(contentData + '-content', contentData);
+            });
+        });
+
+        // --- DATA & STATE ---
+        let alerts = [];
+        let evacuations = [
+            { id: 1, area: 'Coastal Mumbai', status: 'Ongoing', affectedPopulation: 15000, startedOn: '2023-10-26 11:00 AM' },
+            { id: 2, area: 'South Delhi', status: 'Ongoing', affectedPopulation: 8000, startedOn: '2023-10-25 04:00 PM' }
+        ];
+
+        // --- RENDERING ---
+        // Note: renderAlertMarkersOnMap is now defined globally in <head> to fix reference error.
+
+        const updateDashboardCards = () => {
+            document.getElementById('activeAlertsCount').textContent = alerts.filter(a => a.status === 'Active').length;
+            document.getElementById('activeEvacuationsCount').textContent = evacuations.filter(e => e.status === 'Ongoing').length;
+            document.getElementById('safeSheltersCount').textContent = shelters.filter(s => s.occupancy < s.capacity).length;
+            document.getElementById('safeSheltersCapacity').textContent = `${shelters.length} Total Sites`;
+        };
+
+        const renderAlerts = () => {
+            const tbody = document.getElementById('alertsTableBody');
+            tbody.innerHTML = '';
+            alerts.forEach(a => {
+                const severityBadge = a.severity === 'critical' || a.severity >= 8 ? 'badge-critical' : 'badge-high';
+                const row = `
+                    <tr>
+                        <td><strong>${a.location}</strong></td>
+                        <td>${a.type}</td>
+                        <td><span class="badge ${severityBadge}">Level ${a.severity}</span></td>
+                        <td><span class="badge badge-active">${a.status}</span></td>
+                        <td style="color:#777; font-size:0.85rem;">${a.issuedOn}</td>
+                        <td style="text-align:right;">
+                            <button class="btn btn-icon" onclick="handleDelete('alert', ${a.id})"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>
+                `;
+                tbody.innerHTML += row;
+            });
+        };
+
+        const renderEvacuations = () => {
+            const tbody = document.getElementById('evacuationsTableBody');
+            tbody.innerHTML = '';
+            evacuations.forEach(e => {
+                const row = `
+                    <tr>
+                        <td>${e.area}</td>
+                        <td><span class="badge badge-high">${e.status}</span></td>
+                        <td>${e.affectedPopulation.toLocaleString()}</td>
+                        <td>${e.startedOn}</td>
+                        <td style="text-align:right;">
+                            <button class="btn btn-icon"><i class="fas fa-stop-circle"></i></button>
+                        </td>
+                    </tr>
+                `;
+                tbody.innerHTML += row;
+            });
+        };
+
+        const renderShelters = () => {
+            const tbody = document.getElementById('sheltersTableBody');
+            tbody.innerHTML = '';
+            shelters.forEach(s => {
+                const percent = Math.floor((s.occupancy / s.capacity) * 100);
+                const statusBadge = percent >= 100 ? 'badge-critical' : 'badge-active';
+                const row = `
+                    <tr>
+                        <td><b>${s.name}</b><div style="font-size:0.8rem;color:#777;">${s.location || 'No desc'}</div></td>
+                        <td>${s.latitude.toFixed(3)}, ${s.longitude.toFixed(3)}</td>
+                        <td>${s.capacity}</td>
+                        <td>${s.occupancy}</td>
+                        <td><span class="badge ${statusBadge}">${percent}% Full</span></td>
+                        <td style="text-align:right;">
+                            <button class="btn btn-icon" onclick="handleDelete('shelter', ${s.id})"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>
+                `;
+                tbody.innerHTML += row;
+            });
+        };
+
+        // --- FETCHERS ---
+        const fetchAlerts = async (updateMap = true) => {
+            try {
+                const res = await fetch(`${API_BASE_URL}/alerts/active`);
+                if(res.ok) {
+                    const data = await res.json();
+                    alerts = data.map(a => ({...a, issuedOn: new Date(a.reportedAt).toLocaleString()})).reverse();
+                    renderAlerts();
+                    updateDashboardCards();
+                    if(updateMap) renderAlertMarkersOnMap(alerts);
+                }
+            } catch(e) { console.error("Alerts Fetch Error", e); }
+        };
+
+        const fetchShelters = async (updateMap = true) => {
+            try {
+                const res = await fetch(`${API_BASE_URL}/shelters`);
+                if(res.ok) {
+                    shelters = await res.json();
+                    renderShelters();
+                    updateDashboardCards();
+                    if(updateMap && shelterMap) fitShelterMapToBounds();
+                }
+            } catch(e) { console.error("Shelters Fetch Error", e); }
+        };
+
+        // --- FORMS & ACTIONS ---
+        const newAlertForm = document.getElementById('newAlertForm');
+        if(newAlertForm) {
+            newAlertForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const payload = {
+                    location: document.getElementById('alertLocation').value,
+                    type: document.getElementById('alertType').value,
+                    severity: parseInt(document.getElementById('alertSeverity').value),
+                    status: document.getElementById('alertStatus').value,
+                    latitude: parseFloat(document.getElementById('alertLat').value),
+                    longitude: parseFloat(document.getElementById('alertLon').value)
+                };
+                if(isNaN(payload.latitude)) return alert("Pin map location first.");
+
+                try {
+                    await fetch(`${API_BASE_URL}/alerts`, {
+                        method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)
+                    });
+                    document.getElementById('alerts-creation-panel').classList.add('hidden');
+                    document.getElementById('alerts-table-section').classList.remove('hidden');
+                    newAlertForm.reset();
+                    fetchAlerts();
+                } catch(err) { alert("Failed to post alert."); }
+            });
+        }
+
+        const newShelterForm = document.getElementById('newShelterForm');
+        if(newShelterForm) {
+            newShelterForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const payload = {
+                    name: document.getElementById('shelterName').value,
+                    capacity: parseInt(document.getElementById('shelterCapacity').value),
+                    occupancy: parseInt(document.getElementById('shelterOccupancy').value),
+                    latitude: parseFloat(document.getElementById('shelterLat').value),
+                    longitude: parseFloat(document.getElementById('shelterLon').value)
+                };
+                if(isNaN(payload.latitude)) return alert("Pin map location first.");
+
+                try {
+                    await fetch(`${API_BASE_URL}/shelters`, {
+                        method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)
+                    });
+                    document.getElementById('shelter-creation-form-section').classList.add('hidden');
+                    document.getElementById('shelter-table-section').classList.remove('hidden');
+                    newShelterForm.reset();
+                    fetchShelters();
+                } catch(err) { alert("Failed to post shelter."); }
+            });
+        }
+
+        // Toggle UI logic
+        document.getElementById('showAlertCreationForm')?.addEventListener('click', () => {
+            document.getElementById('alerts-creation-panel').classList.remove('hidden');
+            document.getElementById('alerts-table-section').classList.add('hidden');
+            setTimeout(() => alertMap.invalidateSize(), 100);
+        });
+        document.getElementById('cancelAlertCreation')?.addEventListener('click', () => {
+            document.getElementById('alerts-creation-panel').classList.add('hidden');
+            document.getElementById('alerts-table-section').classList.remove('hidden');
+        });
+
+        document.getElementById('showShelterCreationForm')?.addEventListener('click', () => {
+            document.getElementById('shelter-creation-form-section').classList.remove('hidden');
+            document.getElementById('shelter-table-section').classList.add('hidden');
+            setTimeout(() => { if(!shelterCreationMap) initShelterCreationMap(); else shelterCreationMap.invalidateSize(); }, 100);
+        });
+        document.getElementById('cancelShelterCreation')?.addEventListener('click', () => {
+            document.getElementById('shelter-creation-form-section').classList.add('hidden');
+            document.getElementById('shelter-table-section').classList.remove('hidden');
+        });
+
+        // Delete Handler (Global scope for onclick)
+        window.handleDelete = async (type, id) => {
+            if(!confirm("Are you sure?")) return;
+            const endpoint = type === 'shelter' ? `/shelters/${id}` : `/alerts/${id}`; // Adjust if alert delete is supported
+            try {
+                // Mock delete for safety if backend doesn't support specific delete route
+                // await fetch(`${API_BASE_URL}${endpoint}`, { method: 'DELETE' });
+                alert("Simulated Delete: ID " + id);
+                if(type === 'shelter') fetchShelters(); else fetchAlerts();
+            } catch(e) { console.error(e); }
+        };
+
+        // Init
+        activateSection('dashboard-content', 'dashboard');
+    });
+</script>
+</body>
+</html>
